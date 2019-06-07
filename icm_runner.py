@@ -29,6 +29,9 @@ class Runner:
     def get_token(self, username, password):
         """
         Gets the token needed for making api calls
+        :param username:
+        :param password:
+        :return:
         """
         log.info(f'getting token for {username}')
         call_data = {
@@ -44,18 +47,30 @@ class Runner:
         else:
             raise Exception(f'issue getting token: {req_obj}')
 
-    def get_process_id(self, model_name, process_name):
+    def build_header(self, model_name):
         """
-        Gets the top level process id using a given process name
+        builds standard header
+        :param model_name:
+        :return:
         """
-        url = "https://spm.ibmcloud.com/api/v1/scheduleitem"
-        process_id = -1
-        headers = {
-            "authorization": "bearer "+self.token,
+        header = {
+            "authorization": "bearer " + self.token,
             "model": model_name,
             "content-type": "application/json"
         }
-        req = requests.get(url=url, headers=headers)
+        return header
+
+    def get_process_id(self, model_name, process_name):
+        """
+        Gets the top level process id using a given process name
+        :param model_name:
+        :param process_name:
+        :return: process_id
+        """
+        url = "https://spm.ibmcloud.com/api/v1/scheduleitem"
+        process_id = -1
+        header = self.build_header(model_name=model_name)
+        req = requests.get(url=url, headers=header)
         if req.text == "" or req.status_code == 401:
             raise Exception("Model name does not exist.")
         else:
@@ -72,14 +87,14 @@ class Runner:
     def run_process_by_id(self, model_name, process_id, follow=False):
         """
         Runs a process by its id
+        :param model_name:
+        :param process_id:
+        :param follow:
+        :return: activity_id
         """
-        url = "https://spm.ibmcloud.com/api/v1/rpc/scheduleitem/" + process_id + "/run"
-        headers = {
-            "authorization": "bearer " + self.token,
-            "model": model_name,
-            "content-type": "application/json"
-        }
-        req = requests.post(url=url, headers=headers)
+        url = f"https://spm.ibmcloud.com/api/v1/rpc/scheduleitem/{process_id}/run"
+        header = self.build_header(model_name=model_name)
+        req = requests.post(url=url, headers=header)
         req_obj = req.json()
         if "liveactivities" in req_obj.keys():
             log.info("Process run scheduled (immediate) successfully.")
@@ -108,25 +123,23 @@ class Runner:
     def get_live_activity_status(self, model_name, activity_id):
         """
         Gets the status of a live activity by its id
+        :param model_name:
+        :param activity_id:
+        :return: res
         """
-        url = "https://spm.ibmcloud.com/api/v1/liveactivities?liveActivityDTO="+activity_id
-        headers = {
-            "authorization": "bearer "+self.token,
-            "model": model_name,
-            "content-type": "application/json"
-        }
+        url = f"https://spm.ibmcloud.com/api/v1/liveactivities?liveActivityDTO={activity_id}"
+        headers = self.build_header(model_name=model_name)
         res = {}
         req = requests.get(url=url, headers=headers)
+        req_obj = req.json()
         if req.text == "" or req.status_code == 401:
             raise Exception("Model name does not exist.")
-        elif req.text == "[]":
-            res["status"] = 1
+        elif len(req_obj) == 0:
             res["message"] = "Activity ID does not exist or is no longer active."
             res["value"] = 100
         else:
-            for dic in req.json():
+            for dic in req_obj:
                 if "type" in dic.keys():
-                    res["status"] = 1
                     res["message"] = dic["status"]
                     res["value"] = dic["percent"]
                     break
@@ -134,16 +147,13 @@ class Runner:
 
     def get_all_completed_activities(self, model_name):
         """
-        Gets a list of all teh completed activities
+        Gets a list of all the completed activities
+        :param model_name:
+        :return:
         """
         url = "https://spm.ibmcloud.com/api/v1/completedactivities"
-        headers = {
-            "authorization": "bearer "+self.token,
-            "model": model_name,
-            "content-type": "application/json"
-        }
-        res = {}
-        req = requests.get(url=url, headers=headers)
+        header = self.build_header(model_name=model_name)
+        req = requests.get(url=url, headers=header)
         if req.text == "" or req.status_code == 401:
             raise Exception("Model name does not exist.")
         else:
@@ -153,6 +163,9 @@ class Runner:
     def get_completed_activity_status(self, model_name, activity_id):
         """
         Gets the status of a completed activity by its id
+        :param model_name:
+        :param activity_id:
+        :return:
         """
         activity_list = self.get_all_completed_activities(model_name)
         res = {}
@@ -170,6 +183,10 @@ class Runner:
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
         """
         Monitors an activity untill its status <> "Running"
+        :param model_name:
+        :param activity_id:
+        :param interval_mins:
+        :return:
         """
         status = self.get_live_activity_status(model_name, activity_id)
         run_status = status['message']
@@ -185,7 +202,6 @@ class Runner:
 
         status2 = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
         final_status = status2['message']
-
         log.info(f'final status: {final_status}')
         log.info('your job is complete!!!!!')
 
