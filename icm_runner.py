@@ -3,12 +3,10 @@ IBM ICM API Calls Classes
 Complete list: https://developer.ibm.com/api/view/id-689:title-Incentive_Compensation_Management
 """
 
-import json
 import time
-import requests
 import logging as log
 import argparse
-
+import requests
 
 log.basicConfig(format='%(asctime)s - %(message)s', level=log.INFO)
 
@@ -22,7 +20,6 @@ class Runner:
         """
         Intializes a class
         """
-        name = "easy-icm-runner"  # for packaging
         self.login_url = "https://spm.ibmcloud.com/services/login"
         self.token = ""
 
@@ -33,7 +30,7 @@ class Runner:
         :param password:
         :return:
         """
-        log.info(f'getting token for {username}')
+        log.info('getting token for %s', username)
         call_data = {
             "email": username,
             "password": password,
@@ -73,14 +70,14 @@ class Runner:
         req = requests.get(url=url, headers=header)
         if req.text == "" or req.status_code == 401:
             raise Exception("Model name does not exist.")
-        else:
-            for i in req.json():
-                if i['name'] == process_name:
-                    process_id = str(i['id'])
-                    log.info(f'process id = {process_id}')
-                    break
-            if process_id == -1:
-                raise Exception("Process name does not exist.")
+
+        for i in req.json():
+            if i['name'] == process_name:
+                process_id = str(i['id'])
+                log.info('process id = %s', process_id)
+                break
+        if process_id == -1:
+            raise Exception("Process name does not exist.")
         return process_id
 
 
@@ -106,7 +103,7 @@ class Runner:
         else:
             raise Exception("Something is not right."
                             "Check the json object in the returned results 'request' key value.")
-        log.info(f'activity id = {activity_id}')
+        log.info('activity id = %s', activity_id)
         if follow:
             self.monitor_activity(model_name=model_name, activity_id=activity_id)
 
@@ -134,7 +131,7 @@ class Runner:
         req_obj = req.json()
         if req.text == "" or req.status_code == 401:
             raise Exception("Model name does not exist.")
-        elif len(req_obj) == 0:
+        if not req_obj:
             res["message"] = "Activity ID does not exist or is no longer active."
             res["value"] = 100
         else:
@@ -156,8 +153,7 @@ class Runner:
         req = requests.get(url=url, headers=header)
         if req.text == "" or req.status_code == 401:
             raise Exception("Model name does not exist.")
-        else:
-            res = req.json()
+        res = req.json()
         return res
 
     def get_completed_activity_status(self, model_name, activity_id):
@@ -192,22 +188,25 @@ class Runner:
         run_status = status['message']
         percentage = status['value']
         log.info('starting polling loop')
-        log.info(f"current status: {run_status} - {percentage}% ")
+        log.info("current status: %s - %s ", run_status, percentage)
         while run_status == "Running":
             time.sleep(60 * interval_mins)
             status = self.get_live_activity_status(model_name, activity_id)
             run_status = status['message']
             percentage = status['value']
-            log.info(f"current status: {run_status} - {percentage}%")
+            log.info("current status: %s - %s ", run_status, percentage)
 
         status2 = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
         final_status = status2['message']
-        log.info(f'final status: {final_status}')
+        log.info('final status: %s', final_status)
         log.info('your job is complete!!!!!')
 
 
-if __name__ == "__main__":
-
+def exec_runner():
+    """
+    light wrapper for command line execution
+    :return:
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-u", "--username", help="icm username")
     parser.add_argument("-p", "--password", help="icm username")
@@ -218,6 +217,10 @@ if __name__ == "__main__":
     job_runner = Runner()
 
     job_runner.get_token(username=args.username, password=args.password)
-    resp = job_runner.run_process_by_name(model_name=args.model_name, process_name=args.job_name, follow=True)
+    resp = job_runner.run_process_by_name(model_name=args.model_name,
+                                          process_name=args.job_name, follow=True)
+    return resp
 
 
+if __name__ == "__main__":
+    exec_runner()
