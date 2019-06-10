@@ -3,6 +3,11 @@ Simplified Job Execution for IBM ICM v10 using REST APIs
 
 https://developer.ibm.com/api/view/id-689:title-Incentive_Compensation_Management
 
+## Installation:
+```
+pip install easy-icm-runner
+```
+
 ## Usage:
 This project can be used as a module within your custom program, or standalone from the command line.  Below we demonstrate sample usage:
 
