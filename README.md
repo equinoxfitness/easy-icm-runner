@@ -8,7 +8,7 @@ Install the requests library if you dont already have it:
 ```
 pip install requests
 ```
-Install easy-icm-runner
+Install easy-icm-runner:
 ```
 pip install easy-icm-runner
 ```
