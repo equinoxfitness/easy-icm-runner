@@ -10,6 +10,7 @@ import requests
 
 log.basicConfig(format='%(asctime)s - %(message)s', level=log.INFO)
 
+SPM_URL = 'https://spm.ibmcloud.com'
 
 class Runner:
     """
@@ -20,7 +21,7 @@ class Runner:
         """
         Intializes a class
         """
-        self.login_url = "https://spm.ibmcloud.com/services/login"
+        self.login_url = f"{SPM_URL}/services/login"
         self.token = ""
 
     def get_token(self, username, password):
@@ -64,7 +65,7 @@ class Runner:
         :param process_name:
         :return: process_id
         """
-        url = "https://spm.ibmcloud.com/api/v1/scheduleitem"
+        url = f"{SPM_URL}/api/v1/scheduleitem"
         process_id = -1
         header = self.build_header(model_name=model_name)
         req = requests.get(url=url, headers=header)
@@ -81,7 +82,7 @@ class Runner:
         return process_id
 
 
-    def run_process_by_id(self, model_name, process_id, follow=False):
+    def run_process_by_id(self, model_name, process_id):
         """
         Runs a process by its id
         :param model_name:
@@ -89,7 +90,7 @@ class Runner:
         :param follow:
         :return: activity_id
         """
-        url = f"https://spm.ibmcloud.com/api/v1/rpc/scheduleitem/{process_id}/run"
+        url = f"{SPM_URL}/api/v1/rpc/scheduleitem/{process_id}/run"
         header = self.build_header(model_name=model_name)
         req = requests.post(url=url, headers=header)
         req_obj = req.json()
@@ -104,18 +105,16 @@ class Runner:
             raise Exception("Something is not right."
                             "Check the json object in the returned results 'request' key value.")
         log.info('activity id = %s', activity_id)
-        if follow:
-            self.monitor_activity(model_name=model_name, activity_id=activity_id)
 
         return activity_id
 
-    def run_process_by_name(self, model_name, process_name, follow=False):
+    def run_process_by_name(self, model_name, process_name):
         """
         Runs a top level process by its name
         """
         process_id = self.get_process_id(model_name, process_name)
-        self.run_process_by_id(model_name=model_name, process_id=process_id, follow=follow)
-        return process_id
+        activity_id = self.run_process_by_id(model_name=model_name, process_id=process_id)
+        return activity_id
 
     def get_live_activity_status(self, model_name, activity_id):
         """
@@ -124,7 +123,7 @@ class Runner:
         :param activity_id:
         :return: res
         """
-        url = f"https://spm.ibmcloud.com/api/v1/liveactivities?liveActivityDTO={activity_id}"
+        url = f"{SPM_URL}/api/v1/liveactivities?liveActivityDTO={activity_id}"
         headers = self.build_header(model_name=model_name)
         res = {}
         req = requests.get(url=url, headers=headers)
@@ -148,7 +147,7 @@ class Runner:
         :param model_name:
         :return:
         """
-        url = "https://spm.ibmcloud.com/api/v1/completedactivities"
+        url = f"{SPM_URL}/api/v1/completedactivities"
         header = self.build_header(model_name=model_name)
         req = requests.get(url=url, headers=header)
         if req.text == "" or req.status_code == 401:
@@ -217,9 +216,10 @@ def exec_runner():
     job_runner = Runner()
 
     job_runner.get_token(username=args.username, password=args.password)
-    resp = job_runner.run_process_by_name(model_name=args.model_name,
-                                          process_name=args.job_name, follow=True)
-    return resp
+    activity_id = job_runner.run_process_by_name(model_name=args.model_name,
+                                          process_name=args.job_name)
+    job_runner.monitor_activity(model_name=args.model_name,
+                                activity_id=activity_id, interval_mins=0.1)
 
 
 if __name__ == "__main__":

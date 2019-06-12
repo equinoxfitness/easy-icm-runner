@@ -19,12 +19,17 @@ from icm_runner import Runner
 
 job_runner = Runner()
 
+# get an authentication token to use in remaining operations
 job_runner.get_token(username='icm username', password='icm password')
-job_runner.run_process_by_name(model_name='model name', process_name='process name',follow=True)
+# start job
+activity_id = job_runner.run_process_by_name(model_name='model name', process_name='process name',follow=True)
+# poll for status until complete
+job_runner.monitor_activity(model_name='model name', activity_id=activity_id, interval_mins=0.1)
+
 ```
 
 ### Command Line
 For those of you who are not budding pythonistas, or just looking for a simple solution to job scheduling we also allow a command line entrypoint.   
 ```text
-$ python icm_runner.py -u "icm username" -p "icm password" -m "model name" -j "process name"
+$ python -m icm_runner -u "icm username" -p "icm password" -m "model name" -j "process name"
 ```
