@@ -12,6 +12,8 @@ log.basicConfig(format='%(asctime)s - %(message)s', level=log.INFO)
 
 SPM_URL = 'https://spm.ibmcloud.com'
 
+PARSER = argparse.ArgumentParser()
+
 class Runner:
     """
     The main class that contains the required ICM API Call
@@ -201,26 +203,31 @@ class Runner:
         log.info('your job is complete!!!!!')
 
 
-def exec_runner():
+def exec_runner(username, password, model_name, process_name, interval_mins=0.1):
     """
     light wrapper for command line execution
+    :param username:
+    :param password:
+    :param model_name:
+    :param job_name:
     :return:
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--username", help="icm username")
-    parser.add_argument("-p", "--password", help="icm username")
-    parser.add_argument("-m", "--model_name", help="model name, icm environment")
-    parser.add_argument("-j", "--job_name", help="the name of the job/process you want to run")
-    args = parser.parse_args()
 
     job_runner = Runner()
 
-    job_runner.get_token(username=args.username, password=args.password)
-    activity_id = job_runner.run_process_by_name(model_name=args.model_name,
-                                          process_name=args.job_name)
-    job_runner.monitor_activity(model_name=args.model_name,
-                                activity_id=activity_id, interval_mins=0.1)
+    job_runner.get_token(username=username, password=password)
+    activity_id = job_runner.run_process_by_name(model_name=model_name,
+                                                 process_name=process_name)
+    job_runner.monitor_activity(model_name=model_name,
+                                activity_id=activity_id, interval_mins=interval_mins)
 
 
 if __name__ == "__main__":
-    exec_runner()
+    PARSER.add_argument("-u", "--username", help="icm username")
+    PARSER.add_argument("-p", "--password", help="icm username")
+    PARSER.add_argument("-m", "--model_name", help="model name, icm environment")
+    PARSER.add_argument("-j", "--job_name", help="the name of the job/process you want to run")
+    ARGS = PARSER.parse_args()
+
+    exec_runner(username=ARGS.username, password=ARGS.password,
+                model_name=ARGS.model_name, process_name=ARGS.job_name)

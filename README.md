@@ -13,7 +13,7 @@ This project can be used as a module within your custom program, or standalone f
 
 ### Python
 
-The snippet below demonstrates running a job _syncronously_ in python code.  Such a method will be desirable for secret and configuration management, or for integrating into a more complex application.
+The snippet below demonstrates running a job _syncronously_ in python code.  Such a method will be desirable for incorporating an ICM job step into a more complex application, or such tasks as integrating your own secret and configuration management.
 ```python
 from icm_runner import Runner
 
