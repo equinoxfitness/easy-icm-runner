@@ -19,12 +19,14 @@ class Runner:
     The main class that contains the required ICM API Call
     Functions to manage running the Scheduler
     """
-    def __init__(self):
+    def __init__(self, api_key=None):
         """
         Intializes a class
         """
         self.login_url = f"{SPM_URL}/services/login"
         self.token = ""
+        if api_key:
+            self.token = api_key
 
     def get_token(self, username, password):
         """
@@ -33,7 +35,7 @@ class Runner:
         :param password:
         :return:
         """
-        log.info('getting token for %s', username)
+        log.info("Getting token for %s", username)
         call_data = {
             "email": username,
             "password": password,
@@ -41,11 +43,12 @@ class Runner:
         }
         req = requests.post(url=self.login_url, data=call_data)
         req_obj = req.json()
-        if "token" in req_obj.keys():
-            log.info("token obtained successfuly.")
+        if req.status_code == 200:
+            log.info("Token obtained successfuly")
             self.token = req_obj["token"]
         else:
-            raise Exception(f'issue getting token: {req_obj}')
+            msg = req_obj["message"]
+            raise Exception(f"{req.status_code}. Issue getting token: {msg}")
 
     def build_header(self, model_name):
         """
@@ -71,18 +74,21 @@ class Runner:
         process_id = -1
         header = self.build_header(model_name=model_name)
         req = requests.get(url=url, headers=header)
-        if req.text == "" or req.status_code == 401:
-            raise Exception("Model name does not exist.")
+        req_obj = req.json()
+        if req.status_code != 200:
+            msg = req_obj["Message"]
+            raise Exception(f"{req.status_code}. Issue getting process id: {msg}")
 
         for i in req.json():
-            if i['name'] == process_name:
-                process_id = str(i['id'])
-                log.info('process id = %s', process_id)
+            if i["name"] == process_name:
+                process_id = str(i["id"])
+                log.info("Process id = %s", process_id)
                 break
-        if process_id == -1:
-            raise Exception("Process name does not exist.")
-        return process_id
 
+        if process_id == -1:
+            raise Exception("Invalid process name specified")
+
+        return process_id
 
     def run_process_by_id(self, model_name, process_id):
         """
@@ -96,18 +102,15 @@ class Runner:
         header = self.build_header(model_name=model_name)
         req = requests.post(url=url, headers=header)
         req_obj = req.json()
-        if "liveactivities" in req_obj.keys():
-            log.info("Process run scheduled (immediate) successfully.")
+        if req.status_code == 200:
+            log.info("Process run scheduled (immediate) successfully")
             activity = req_obj["liveactivities"]
             pos = len(activity) - activity.rfind("/", 1, 9999) - 1
             activity_id = activity[-pos:]
-        elif "Message" in req_obj.keys():
-            raise Exception('Issue scheduling process: {}'.format(req_obj["Message"]))
         else:
-            raise Exception("Something is not right."
-                            "Check the json object in the returned results 'request' key value.")
-        log.info('activity id = %s', activity_id)
-
+            msg = req_obj["Message"]
+            raise Exception(f"{req.status_code}. Issue scheduling process: {msg}")
+        log.info("Activity id = %s", activity_id)
         return activity_id
 
     def run_process_by_name(self, model_name, process_name):
@@ -130,17 +133,20 @@ class Runner:
         res = {}
         req = requests.get(url=url, headers=headers)
         req_obj = req.json()
-        if req.text == "" or req.status_code == 401:
-            raise Exception("Model name does not exist.")
-        if not req_obj:
-            res["message"] = "Activity ID does not exist or is no longer active."
-            res["value"] = 100
-        else:
+        if req.status_code != 200:
+            msg = req_obj["Message"]
+            raise Exception(f"{req.status_code}. Issue getting activity status: {msg}")
+
+        if req.status_code == 200:
             for dic in req_obj:
                 if "type" in dic.keys():
                     res["message"] = dic["status"]
                     res["value"] = dic["percent"]
                     break
+
+        if not res:
+            raise Exception("Invalid activity id specified")
+
         return res
 
     def get_all_completed_activities(self, model_name):
@@ -152,16 +158,21 @@ class Runner:
         url = f"{SPM_URL}/api/v1/completedactivities"
         header = self.build_header(model_name=model_name)
         req = requests.get(url=url, headers=header)
-        if req.text == "" or req.status_code == 401:
-            raise Exception("Model name does not exist.")
-        res = req.json()
-        return res
+        req_obj = req.json()
+        if req.status_code != 200:
+            msg = req_obj["Message"]
+            raise Exception(f"{req.status_code}. Issue retrieving completed activities: {msg}")
+
+        if not req_obj:
+            raise Exception("Completed activies is empty")
+
+        return req_obj
 
     def get_completed_activity_status(self, model_name, activity_id):
         """
         Gets the status of a completed activity by its id
         :param model_name:
-        :param activity_id:
+        :param activity_id (integer):
         :return:
         """
         activity_list = self.get_all_completed_activities(model_name)
@@ -169,12 +180,16 @@ class Runner:
         for dic in activity_list:
             if dic["progressId"] == int(activity_id):
                 if "errors" in dic["message"]:
-                    res["message"] = dic['message']
+                    res["message"] = dic["message"]
                     res["value"] = dic["status"]
                 else:
                     res["message"] = dic["message"]
                     res["value"] = dic["status"]
                 break
+
+        if not res:
+            raise Exception("Invalid activity id specified or activity id is not complete")
+
         return res
 
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
@@ -186,48 +201,57 @@ class Runner:
         :return:
         """
         status = self.get_live_activity_status(model_name, activity_id)
-        run_status = status['message']
-        percentage = status['value']
-        log.info('starting polling loop')
-        log.info("current status: %s - %s ", run_status, percentage)
+        run_status = status["message"]
+        percentage = status["value"]
+        log.info("Starting polling loop")
+        log.info("Current status: %s - %s", run_status, percentage)
         while run_status == "Running":
             time.sleep(60 * interval_mins)
             status = self.get_live_activity_status(model_name, activity_id)
-            run_status = status['message']
-            percentage = status['value']
-            log.info("current status: %s - %s ", run_status, percentage)
+            run_status = status["message"]
+            percentage = status["value"]
+            log.info("Current status: %s - %s", run_status, percentage)
 
         status2 = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
-        final_status = status2['message']
-        log.info('final status: %s', final_status)
-        log.info('your job is complete!!!!!')
+        final_status = status2["message"]
+        log.info("Final status: %s", final_status)
+        log.info("Your job is complete!!!!!")
 
 
-def exec_runner(username, password, model_name, process_name, interval_mins=0.1):
+def exec_runner(model_name, process_name, interval_mins=0.1, username=None
+                , password=None, api_key=None):
     """
     light wrapper for command line execution
-    :param username:
-    :param password:
     :param model_name:
     :param job_name:
+    :param interval (minutes, default is 0.1min/6s):
+    :param username (optional, use api key instead):
+    :param password (optional, use api key instead):
+    :param api_key (optional, use username/password instead):
     :return:
     """
 
-    job_runner = Runner()
+    job_runner = Runner(api_key)
 
-    job_runner.get_token(username=username, password=password)
+    if not api_key:
+        job_runner.get_token(username=username, password=password)
+
     activity_id = job_runner.run_process_by_name(model_name=model_name,
                                                  process_name=process_name)
     job_runner.monitor_activity(model_name=model_name,
                                 activity_id=activity_id, interval_mins=interval_mins)
 
-
 if __name__ == "__main__":
     PARSER.add_argument("-u", "--username", help="icm username")
     PARSER.add_argument("-p", "--password", help="icm username")
+    PARSER.add_argument("-a", "--api_key", help="api key")
     PARSER.add_argument("-m", "--model_name", help="model name, icm environment")
     PARSER.add_argument("-j", "--job_name", help="the name of the job/process you want to run")
     ARGS = PARSER.parse_args()
 
-    exec_runner(username=ARGS.username, password=ARGS.password,
-                model_name=ARGS.model_name, process_name=ARGS.job_name)
+    if not ARGS.api_key:
+        exec_runner(username=ARGS.username, password=ARGS.password,
+                    model_name=ARGS.model_name, process_name=ARGS.job_name)
+    else:
+        exec_runner(api_key=ARGS.api_key, model_name=ARGS.model_name,
+                    process_name=ARGS.job_name)
