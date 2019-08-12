@@ -13,7 +13,12 @@ username = config.get('test', 'username')
 password = config.get('test', 'password')
 model_name = config.get('test', 'model_name')
 process_name = config.get('test', 'process_name')
+api_key = config.get('test', 'api_key')
 
-
+#
+# exec_runner(username=username,  model_name=model_name,
+#             process_name=process_name, api_key=api_key)
+#
 exec_runner(username=username, password=password, model_name=model_name,
             process_name=process_name)
+

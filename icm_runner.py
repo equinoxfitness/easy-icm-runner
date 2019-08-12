@@ -230,16 +230,15 @@ def exec_runner(model_name, process_name, interval_mins=0.1, username=None
     :param api_key (optional, use username/password instead):
     :return:
     """
-
     job_runner = Runner(api_key)
-
+    assert api_key or password
     if not api_key:
         job_runner.get_token(username=username, password=password)
-
     activity_id = job_runner.run_process_by_name(model_name=model_name,
                                                  process_name=process_name)
     job_runner.monitor_activity(model_name=model_name,
                                 activity_id=activity_id, interval_mins=interval_mins)
+
 
 if __name__ == "__main__":
     PARSER.add_argument("-u", "--username", help="icm username")

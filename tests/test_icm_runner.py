@@ -15,6 +15,7 @@ class TestRunner(TestCase):
         :return:
         """
         mock_post.return_value.json.return_value = {'token': 'blah'}
+        mock_post.return_value.status_code = 200
         Runner().get_token('', '')
 
     def test_build_header(self, mock_post):
