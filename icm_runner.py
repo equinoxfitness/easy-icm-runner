@@ -179,12 +179,8 @@ class Runner:
         res = {}
         for dic in activity_list:
             if dic["progressId"] == int(activity_id):
-                if "errors" in dic["message"]:
-                    res["message"] = dic["message"]
-                    res["value"] = dic["status"]
-                else:
-                    res["message"] = dic["message"]
-                    res["value"] = dic["status"]
+                res["message"] = dic["message"]
+                res["value"] = dic["status"]
                 break
 
         if not res:
