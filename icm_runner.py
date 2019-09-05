@@ -231,7 +231,10 @@ def exec_runner(model_name, process_name, interval_mins=0.1, username=None
     :return:
     """
     job_runner = Runner(api_key)
-    assert api_key or password
+
+    if not api_key or not password:
+        raise Exception("API Key or Password missing")
+
     if not api_key:
         job_runner.get_token(username=username, password=password)
     activity_id = job_runner.run_process_by_name(model_name=model_name,
