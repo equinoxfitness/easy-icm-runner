@@ -145,7 +145,7 @@ class Runner:
                     break
 
         if not res:
-            raise Exception("Invalid activity id specified")
+            res = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
 
         return res
 
@@ -179,17 +179,13 @@ class Runner:
         res = {}
         for dic in activity_list:
             if dic["progressId"] == int(activity_id):
-                if "errors" in dic["message"]:
-                    res["message"] = dic["message"]
-                    res["value"] = dic["status"]
-                else:
-                    res["message"] = dic["message"]
-                    res["value"] = dic["status"]
+                res["message"] = dic["message"]
+                res["value"] = dic["status"]
                 break
 
         if not res:
             raise Exception("Invalid activity id specified or activity id is not complete")
-
+        
         return res
 
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
@@ -203,14 +199,16 @@ class Runner:
         status = self.get_live_activity_status(model_name, activity_id)
         run_status = status["message"]
         percentage = status["value"]
-        log.info("Starting polling loop")
-        log.info("Current status: %s - %s", run_status, percentage)
+        if status["value"] != 'Completed':
+            log.info("Starting polling loop")
+            log.info("Current status: %s - %s", run_status, percentage)
         while run_status == "Running":
             time.sleep(60 * interval_mins)
             status = self.get_live_activity_status(model_name, activity_id)
             run_status = status["message"]
             percentage = status["value"]
-            log.info("Current status: %s - %s", run_status, percentage)
+            if status["value"] != 'Completed':
+                log.info("Current status: %s - %s", run_status, percentage)
 
         status2 = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
         final_status = status2["message"]
