@@ -22,7 +22,7 @@ job_runner = Runner()
 # get an authentication token to use in remaining operations
 job_runner.get_token(username='icm username', password='icm password')
 # start job
-activity_id = job_runner.run_process_by_name(model_name='model name', process_name='process name',follow=True)
+activity_id = job_runner.run_process_by_name(model_name='model name', process_name='process name', follow=True)
 # poll for status until complete
 job_runner.monitor_activity(model_name='model name', activity_id=activity_id, interval_mins=0.1)
 

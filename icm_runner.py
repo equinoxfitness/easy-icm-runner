@@ -145,7 +145,7 @@ class Runner:
                     break
 
         if not res:
-            raise Exception("Invalid activity id specified")
+            res = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
 
         return res
 
@@ -179,17 +179,12 @@ class Runner:
         res = {}
         for dic in activity_list:
             if dic["progressId"] == int(activity_id):
-                if "errors" in dic["message"]:
-                    res["message"] = dic["message"]
-                    res["value"] = dic["status"]
-                else:
-                    res["message"] = dic["message"]
-                    res["value"] = dic["status"]
+                res["message"] = dic["message"]
+                res["value"] = dic["status"]
                 break
 
         if not res:
             raise Exception("Invalid activity id specified or activity id is not complete")
-
         return res
 
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
@@ -203,14 +198,16 @@ class Runner:
         status = self.get_live_activity_status(model_name, activity_id)
         run_status = status["message"]
         percentage = status["value"]
-        log.info("Starting polling loop")
-        log.info("Current status: %s - %s", run_status, percentage)
+        if status["value"] != 'Completed':
+            log.info("Starting polling loop")
+            log.info("Current status: %s - %s", run_status, percentage)
         while run_status == "Running":
             time.sleep(60 * interval_mins)
             status = self.get_live_activity_status(model_name, activity_id)
             run_status = status["message"]
             percentage = status["value"]
-            log.info("Current status: %s - %s", run_status, percentage)
+            if status["value"] != 'Completed':
+                log.info("Current status: %s - %s", run_status, percentage)
 
         status2 = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
         final_status = status2["message"]
@@ -218,20 +215,27 @@ class Runner:
         log.info("Your job is complete!!!!!")
 
 
-def exec_runner(model_name, process_name, interval_mins=0.1, username=None
-                , password=None, api_key=None):
+def exec_runner(model_name, process_name, **kwargs):
     """
     light wrapper for command line execution
     :param model_name:
     :param job_name:
-    :param interval (minutes, default is 0.1min/6s):
+    :param interval (optional, minutes, default is 0.1min/6s):
     :param username (optional, use api key instead):
     :param password (optional, use api key instead):
     :param api_key (optional, use username/password instead):
     :return:
     """
+    api_key = kwargs.get('api_key', None)
+    username = kwargs.get('username', None)
+    password = kwargs.get('password', None)
+    interval_mins = kwargs.get('interval_mins', 0.1)
+
     job_runner = Runner(api_key)
-    assert api_key or password
+
+    if not api_key or not password:
+        raise Exception("API Key or Password missing")
+
     if not api_key:
         job_runner.get_token(username=username, password=password)
     activity_id = job_runner.run_process_by_name(model_name=model_name,
