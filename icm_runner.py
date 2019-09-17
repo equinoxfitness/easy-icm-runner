@@ -145,7 +145,6 @@ class Runner:
                     break
 
         if not res:
-            time.sleep(10)
             res = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
 
         return res
@@ -186,7 +185,6 @@ class Runner:
 
         if not res:
             raise Exception("Invalid activity id specified or activity id is not complete")
-
         return res
 
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
@@ -216,22 +214,27 @@ class Runner:
         log.info("Final status: %s", final_status)
         log.info("Your job is complete!!!!!")
 
-def exec_runner(*cred_args, model_name, process_name, interval_mins=0.1, api_key=None):
+
+def exec_runner(model_name, process_name, **kwargs):
     """
     light wrapper for command line execution
     :param model_name:
     :param job_name:
-    :param interval (minutes, default is 0.1min/6s):
+    :param interval (optional, minutes, default is 0.1min/6s):
     :param username (optional, use api key instead):
     :param password (optional, use api key instead):
     :param api_key (optional, use username/password instead):
     :return:
     """
+    api_key = kwargs.get('api_key', None)
+    username = kwargs.get('username', None)
+    password = kwargs.get('password', None)
+    interval_mins = kwargs.get('interval_mins', 0.1)
+
     job_runner = Runner(api_key)
-    print(cred_args)
-    assert api_key or cred_args[1]
+    assert api_key or password
     if not api_key:
-        job_runner.get_token(username=cred_args[0], password=cred_args[1])
+        job_runner.get_token(username=username, password=password)
     activity_id = job_runner.run_process_by_name(model_name=model_name,
                                                  process_name=process_name)
     job_runner.monitor_activity(model_name=model_name,
@@ -247,7 +250,8 @@ if __name__ == "__main__":
     ARGS = PARSER.parse_args()
 
     if not ARGS.api_key:
-        exec_runner(ARGS.cred_args, model_name=ARGS.model_name, process_name=ARGS.job_name)
+        exec_runner(username=ARGS.username, password=ARGS.password,
+                    model_name=ARGS.model_name, process_name=ARGS.job_name)
     else:
         exec_runner(api_key=ARGS.api_key, model_name=ARGS.model_name,
                     process_name=ARGS.job_name)
