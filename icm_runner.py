@@ -7,6 +7,7 @@ import time
 import logging as log
 import argparse
 import requests
+import pprint
 
 log.basicConfig(format='%(asctime)s - %(message)s', level=log.INFO)
 
@@ -219,7 +220,7 @@ def exec_runner(model_name, process_name, **kwargs):
     """
     light wrapper for command line execution
     :param model_name:
-    :param job_name:
+    :param process_name:
     :param interval (optional, minutes, default is 0.1min/6s):
     :param username (optional, use api key instead):
     :param password (optional, use api key instead):
@@ -230,10 +231,9 @@ def exec_runner(model_name, process_name, **kwargs):
     username = kwargs.get('username', None)
     password = kwargs.get('password', None)
     interval_mins = kwargs.get('interval_mins', 0.1)
-
     job_runner = Runner(api_key)
 
-    if not api_key or not password:
+    if not api_key and not password:
         raise Exception("API Key or Password missing")
 
     if not api_key:
