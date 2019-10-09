@@ -127,7 +127,25 @@ class TestRunner(TestCase):
         :param mock_post:
         :return:
         """
-        pass
+        mock_req.get.return_value.json.return_value = \
+            [{'progressId': 1,
+              'userId': 'test@test.com',
+              'type': 'Calculation',
+              'status': 'Completed',
+              'message': 'TEST 103 Get Sessions with Missing Rates calculated successfully.',
+              'time': '2019-09-27T16:44:51.573Z',
+              'messageDetails': ''}, ]
+        mock_req.get.return_value.status_code = 200
+        mock_res = \
+            [{'progressId': 1,
+              'userId': 'test@test.com',
+              'type': 'Calculation',
+              'status': 'Completed',
+              'message': 'TEST 103 Get Sessions with Missing Rates calculated successfully.',
+              'time': '2019-09-27T16:44:51.573Z',
+              'messageDetails': ''}, ]
+        res = Runner().get_all_completed_activities('test')
+        self.assertEqual(mock_res, res)
 
     def test_get_completed_activity_status(self, mock_req):
         """
