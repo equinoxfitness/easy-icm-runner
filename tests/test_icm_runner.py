@@ -1,3 +1,7 @@
+"""
+Unit tests for icm_runner.py
+"""
+
 from unittest import TestCase
 from unittest.mock import patch
 from icm_runner import Runner
@@ -16,15 +20,20 @@ class TestRunner(TestCase):
         """
         mock_req.post.return_value.json.return_value = {'token': 'blah'}
         mock_req.post.return_value.status_code = 200
-        Runner().get_token('', '')
+        res = Runner()
+        res.get_token('test', 'test')
+        self.assertEqual('blah', res.token)
 
     def test_build_header(self, mock_req):
         """
         :param mock_req:
         :return:
         """
-        fixture_header = {'authorization': 'bearer ', 'model': 'fake_model', 'content-type': 'application/json'}
+        fixture_header = {'authorization': 'bearer ',
+                          'model': 'fake_model',
+                          'content-type': 'application/json'}
         header = Runner().build_header('fake_model')
+        mock_req.get.return_value.status_code = 200
         self.assertEqual(fixture_header, header)
 
     def test_get_process_id(self, mock_req):
@@ -33,29 +42,8 @@ class TestRunner(TestCase):
         :return:
         """
         mock_req.get.return_value.json.return_value = \
-            [{'activation': 'Enabled',
-              'childScheduleItems': [],
-              'id': 1,
-              'lastRun': '2019-02-01T12:10:33.757Z',
-              'lastRunStatus': 'Success',
-              'name': 'test1',
-              'nextRun': '0001-01-01T00:00:00',
-              'order': 1,
-              'scheduleItemType': 'Folder',
-              'settings': {'emailOnFailure': True,
-                           'emailOnSuccess': True,
-                           'enableRetries': False,
-                           'externalToolTimeout': 0,
-                           'failEmails': ['test@test.com'],
-                           'isGlobal': False,
-                           'overrideChildSettings': False,
-                           'scheduleItemId': 1,
-                           'schedulerSettingsId': 7,
-                           'stopOnFailure': True,
-                           'stopToolOnTimeout': False,
-                           'successEmails': ['test@test.com'],
-                           'version': {'rowVersion': 1}},
-              'version': {'rowVersion': 1}}, ]
+            [{'id': 1,
+              'name': 'test1'}, ]
         mock_req.get.return_value.status_code = 200
         activity_id = Runner().get_process_id('test', 'test1')
         self.assertEqual(int(activity_id), 1)
@@ -67,7 +55,7 @@ class TestRunner(TestCase):
         """
         mock_req.post.return_value.json.return_value = \
             {'completedactivities': 'api/v1/completedactivities/1',
-              'liveactivities': 'api/v1/liveactivities/1'}
+             'liveactivities': 'api/v1/liveactivities/1'}
         mock_req.post.return_value.status_code = 200
         activity_id = Runner().run_process_by_id('test', '1')
         self.assertEqual(int(activity_id), 1)
@@ -79,32 +67,11 @@ class TestRunner(TestCase):
         """
         mock_req.post.return_value.json.return_value = \
             {'completedactivities': 'api/v1/completedactivities/1',
-              'liveactivities': 'api/v1/liveactivities/1'}
+             'liveactivities': 'api/v1/liveactivities/1'}
         mock_req.post.return_value.status_code = 200
         mock_req.get.return_value.json.return_value = \
-            [{'activation': 'Enabled',
-              'childScheduleItems': [],
-              'id': 1,
-              'lastRun': '2019-02-01T12:10:33.757Z',
-              'lastRunStatus': 'Success',
-              'name': 'test1',
-              'nextRun': '0001-01-01T00:00:00',
-              'order': 1,
-              'scheduleItemType': 'Folder',
-              'settings': {'emailOnFailure': True,
-                           'emailOnSuccess': True,
-                           'enableRetries': False,
-                           'externalToolTimeout': 0,
-                           'failEmails': ['test@test.com'],
-                           'isGlobal': False,
-                           'overrideChildSettings': False,
-                           'scheduleItemId': 1,
-                           'schedulerSettingsId': 7,
-                           'stopOnFailure': True,
-                           'stopToolOnTimeout': False,
-                           'successEmails': ['test@test.com'],
-                           'version': {'rowVersion': 1}},
-              'version': {'rowVersion': 1}}, ]
+            [{'id': 1,
+              'name': 'test1'}, ]
         mock_req.get.return_value.status_code = 200
         activity_id = Runner().run_process_by_name('test', 'test1')
         self.assertEqual(int(activity_id), 1)
@@ -191,4 +158,3 @@ class TestRunner(TestCase):
 if __name__ == '__main__':
     import unittest as ut
     ut.main()
-
