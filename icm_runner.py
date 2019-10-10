@@ -7,13 +7,23 @@ import time
 import logging as log
 import argparse
 import requests
-import pprint
 
 log.basicConfig(format='%(asctime)s - %(message)s', level=log.INFO)
 
 SPM_URL = 'https://spm.ibmcloud.com'
 
 PARSER = argparse.ArgumentParser()
+
+
+class ActivityNotFoundError(Exception):
+    """
+    Custom exception for activities not found
+    or not completed.
+    """
+    def __init__(self, message):
+        super(ActivityNotFoundError, self).__init__(message)
+        self.message = message
+
 
 class Runner:
     """
@@ -22,7 +32,7 @@ class Runner:
     """
     def __init__(self, api_key=None):
         """
-        Intializes a class
+        Initialises a class
         """
         self.login_url = f"{SPM_URL}/services/login"
         self.token = ""
@@ -45,7 +55,7 @@ class Runner:
         req = requests.post(url=self.login_url, data=call_data)
         req_obj = req.json()
         if req.status_code == 200:
-            log.info("Token obtained successfuly")
+            log.info("Token obtained successfully")
             self.token = req_obj["token"]
         else:
             msg = req_obj["message"]
@@ -96,7 +106,6 @@ class Runner:
         Runs a process by its id
         :param model_name:
         :param process_id:
-        :param follow:
         :return: activity_id
         """
         url = f"{SPM_URL}/api/v1/rpc/scheduleitem/{process_id}/run"
@@ -143,6 +152,10 @@ class Runner:
                 if "type" in dic.keys():
                     res["message"] = dic["status"]
                     res["value"] = dic["percent"]
+                    if "IsUnitTest" in dic.keys():
+                        res["IsUnitTest"] = dic["IsUnitTest"]
+                    else:
+                        res["IsUnitTest"] = False
                     break
 
         if not res:
@@ -165,7 +178,7 @@ class Runner:
             raise Exception(f"{req.status_code}. Issue retrieving completed activities: {msg}")
 
         if not req_obj:
-            raise Exception("Completed activies is empty")
+            raise Exception("Completed activities is empty")
 
         return req_obj
 
@@ -173,7 +186,7 @@ class Runner:
         """
         Gets the status of a completed activity by its id
         :param model_name:
-        :param activity_id (integer):
+        :param activity_id:
         :return:
         """
         activity_list = self.get_all_completed_activities(model_name)
@@ -182,38 +195,47 @@ class Runner:
             if dic["progressId"] == int(activity_id):
                 res["message"] = dic["message"]
                 res["value"] = dic["status"]
+                res["IsUnitTest"] = False
                 break
-
         if not res:
-            raise Exception("Invalid activity id specified or activity id is not complete")
+            raise ActivityNotFoundError("Invalid activity id specified or "
+                                        "activity id is not complete")
         return res
 
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
         """
-        Monitors an activity untill its status <> "Running"
+        Monitors an activity until its status <> "Running"
         :param model_name:
         :param activity_id:
         :param interval_mins:
         :return:
         """
-        status = self.get_live_activity_status(model_name, activity_id)
-        run_status = status["message"]
-        percentage = status["value"]
-        if status["value"] != 'Completed':
-            log.info("Starting polling loop")
-            log.info("Current status: %s - %s", run_status, percentage)
-        while run_status == "Running":
+        try:
+            status = self.get_completed_activity_status(model_name=model_name,
+                                                        activity_id=activity_id)
+            run_status = 1
+        except ActivityNotFoundError:
+            run_status = 0
+        while run_status == 0:
             time.sleep(60 * interval_mins)
-            status = self.get_live_activity_status(model_name, activity_id)
-            run_status = status["message"]
-            percentage = status["value"]
-            if status["value"] != 'Completed':
-                log.info("Current status: %s - %s", run_status, percentage)
-
-        status2 = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
-        final_status = status2["message"]
-        log.info("Final status: %s", final_status)
+            try:
+                status = self.get_completed_activity_status(model_name=model_name,
+                                                            activity_id=activity_id)
+                run_status = 1
+            except ActivityNotFoundError:
+                run_status = 0
+                status = self.get_live_activity_status(model_name=model_name,
+                                                       activity_id=activity_id)
+                log.info("Current status: %s - %s", status['message'], status['value'])
+            if status['IsUnitTest']:
+                run_status = 1
+        find_success = status['message'].find('successfully')
+        if find_success == -1 and not status['IsUnitTest']:
+            run_status = 0
+        else:
+            run_status = 1
         log.info("Your job is complete!!!!!")
+        return run_status
 
 
 def exec_runner(model_name, process_name, **kwargs):
