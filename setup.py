@@ -5,21 +5,21 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="easy-icm-runner",
-    version="1.0.6",
+    version="2.1.2",
     author="Bachir El Koussa",
     author_email="bgkoussa@gmail.com",
-    description="A wrapper for IBM ICMs Scheduler API Calls",
+    description="A wrapper for IBM ICMs Scheduler API Calls'",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/equinoxfitness/easy-icm-runner/",
-    #packages=setuptools.find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-    py_modules = ['icm_runner'],
-    install_requires=[
-          'requests',
-      ],
+    url="https://github.com/equinoxfitness/easy-icm-runner",
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    python_requires='>=3.6',
+    install_requires=[
+          'requests',
+      ],
 )
