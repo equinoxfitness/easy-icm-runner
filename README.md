@@ -1,7 +1,5 @@
 # easy-icm-runner :rocket:
-Simplified Job Execution for IBM ICM v10 using REST APIs
-
-https://developer.ibm.com/api/view/id-689:title-Incentive_Compensation_Management
+Simplified Job Execution for Varicent's ICM v10 using REST APIs
 
 ## Installation:
 ```
