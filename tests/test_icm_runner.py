@@ -4,10 +4,10 @@ Unit tests for icm_runner.py
 
 from unittest import TestCase
 from unittest.mock import patch
-from icm_runner import Runner
+from easy_icm_runner.icm_runner import Runner
 
 
-@patch('icm_runner.requests')
+@patch('easy_icm_runner.icm_runner.requests')
 class TestRunner(TestCase):
     """
     Test cases for icm_runner.py

@@ -4,7 +4,7 @@ customize and rename SAMPLE_test.cfg with your own configurations
 """
 
 import configparser
-from icm_runner import exec_runner
+from easy_icm_runner.icm_runner import exec_runner
 
 config = configparser.ConfigParser()
 config.read('test.cfg')
