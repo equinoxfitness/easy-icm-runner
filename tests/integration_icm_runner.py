@@ -1,24 +1,32 @@
 """
-the following is a simple hand dispatched integration test, better testing to come!
+the following is a simple hand dispatched integration test
 customize and rename SAMPLE_test.cfg with your own configurations
+replace test.cfg below with SAMPLE_test.cfg
 """
 
 import configparser
 from easy_icm_runner.icm_runner import exec_runner
 
 config = configparser.ConfigParser()
-config.read('test.cfg')
+config.read("test.cfg")
 
-username = config.get('test', 'username')
-password = config.get('test', 'password')
-model_name = config.get('test', 'model_name')
-process_name = config.get('test', 'process_name')
-api_key = config.get('test', 'api_key')
+username = config.get("test", "username")
+password = config.get("test", "password")
+model_name = config.get("test", "model_name")
+process_name = config.get("test", "process_name")
+api_key = config.get("test", "api_key")
 
 print("---first executing via api_key---")
-exec_runner(username=username,  model_name=model_name,
-            process_name=process_name, api_key=api_key)
+exec_runner(
+    username=username,
+    model_name=model_name,
+    process_name=process_name,
+    api_key=api_key,
+)
 print("---now executing via username, pwd---")
-exec_runner(username=username, password=password, model_name=model_name,
-            process_name=process_name)
-
+exec_runner(
+    username=username,
+    password=password,
+    model_name=model_name,
+    process_name=process_name,
+)

@@ -1,6 +1,5 @@
 """
-IBM ICM API Calls Classes
-Complete list: https://developer.ibm.com/api/view/id-689:title-Incentive_Compensation_Management
+Class to call Varicent ICM Scheduler API and monitor activities
 """
 
 import time
@@ -8,9 +7,9 @@ import logging as log
 import argparse
 import requests
 
-log.basicConfig(format='%(asctime)s - %(message)s', level=log.INFO)
+log.basicConfig(format="%(asctime)s - %(message)s", level=log.INFO)
 
-SPM_URL = 'https://spm.ibmcloud.com'
+SPM_URL = "https://spm.ibmcloud.com"
 
 PARSER = argparse.ArgumentParser()
 
@@ -20,6 +19,7 @@ class ActivityNotFoundError(Exception):
     Custom exception for activities not found
     or not completed.
     """
+
     def __init__(self, message):
         super(ActivityNotFoundError, self).__init__(message)
         self.message = message
@@ -30,6 +30,7 @@ class Runner:
     The main class that contains the required ICM API Call
     Functions to manage running the Scheduler
     """
+
     def __init__(self, api_key=None):
         """
         Initialises a class
@@ -50,7 +51,7 @@ class Runner:
         call_data = {
             "email": username,
             "password": password,
-            "content-type": "application/json"
+            "content-type": "application/json",
         }
         req = requests.post(url=self.login_url, data=call_data)
         req_obj = req.json()
@@ -70,7 +71,7 @@ class Runner:
         header = {
             "authorization": "bearer " + self.token,
             "model": model_name,
-            "content-type": "application/json"
+            "content-type": "application/json",
         }
         return header
 
@@ -88,7 +89,9 @@ class Runner:
         req_obj = req.json()
         if req.status_code != 200:
             msg = req_obj["Message"]
-            raise Exception(f"{req.status_code}. Issue getting process id: {msg}")
+            raise Exception(
+                f"{req.status_code}. Issue getting process id: {msg}"
+            )
 
         for i in req.json():
             if i["name"] == process_name:
@@ -119,7 +122,9 @@ class Runner:
             activity_id = activity[-pos:]
         else:
             msg = req_obj["Message"]
-            raise Exception(f"{req.status_code}. Issue scheduling process: {msg}")
+            raise Exception(
+                f"{req.status_code}. Issue scheduling process: {msg}"
+            )
         log.info("Activity id = %s", activity_id)
         return activity_id
 
@@ -128,7 +133,9 @@ class Runner:
         Runs a top level process by its name
         """
         process_id = self.get_process_id(model_name, process_name)
-        activity_id = self.run_process_by_id(model_name=model_name, process_id=process_id)
+        activity_id = self.run_process_by_id(
+            model_name=model_name, process_id=process_id
+        )
         return activity_id
 
     def get_live_activity_status(self, model_name, activity_id):
@@ -145,7 +152,9 @@ class Runner:
         req_obj = req.json()
         if req.status_code != 200:
             msg = req_obj["Message"]
-            raise Exception(f"{req.status_code}. Issue getting activity status: {msg}")
+            raise Exception(
+                f"{req.status_code}. Issue getting activity status: {msg}"
+            )
 
         if req.status_code == 200:
             for dic in req_obj:
@@ -159,7 +168,9 @@ class Runner:
                     break
 
         if not res:
-            res = self.get_completed_activity_status(model_name=model_name, activity_id=activity_id)
+            res = self.get_completed_activity_status(
+                model_name=model_name, activity_id=activity_id
+            )
 
         return res
 
@@ -175,7 +186,10 @@ class Runner:
         req_obj = req.json()
         if req.status_code != 200:
             msg = req_obj["Message"]
-            raise Exception(f"{req.status_code}. Issue retrieving completed activities: {msg}")
+            raise Exception(
+                f"{req.status_code}. Issue retrieving completed \
+                activities: {msg}"
+            )
 
         if not req_obj:
             raise Exception("Completed activities is empty")
@@ -198,8 +212,10 @@ class Runner:
                 res["IsUnitTest"] = False
                 break
         if not res:
-            raise ActivityNotFoundError("Invalid activity id specified or "
-                                        "activity id is not complete")
+            raise ActivityNotFoundError(
+                "Invalid activity id specified or "
+                "activity id is not complete"
+            )
         return res
 
     def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
@@ -211,26 +227,33 @@ class Runner:
         :return:
         """
         try:
-            status = self.get_completed_activity_status(model_name=model_name,
-                                                        activity_id=activity_id)
+            status = self.get_completed_activity_status(
+                model_name=model_name, activity_id=activity_id
+            )
             run_status = 1
         except ActivityNotFoundError:
             run_status = 0
         while run_status == 0:
             time.sleep(60 * interval_mins)
             try:
-                status = self.get_completed_activity_status(model_name=model_name,
-                                                            activity_id=activity_id)
+                status = self.get_completed_activity_status(
+                    model_name=model_name, activity_id=activity_id
+                )
                 run_status = 1
             except ActivityNotFoundError:
                 run_status = 0
-                status = self.get_live_activity_status(model_name=model_name,
-                                                       activity_id=activity_id)
-                log.info("Current status: %s - %s", status['message'], status['value'])
-            if status['IsUnitTest']:
+                status = self.get_live_activity_status(
+                    model_name=model_name, activity_id=activity_id
+                )
+                log.info(
+                    "Current status: %s - %s",
+                    status["message"],
+                    status["value"],
+                )
+            if status["IsUnitTest"]:
                 run_status = 1
-        find_success = status['message'].find('successfully')
-        if find_success == -1 and not status['IsUnitTest']:
+        find_success = status["message"].find("successfully")
+        if find_success == -1 and not status["IsUnitTest"]:
             run_status = 0
         else:
             run_status = 1
@@ -249,10 +272,10 @@ def exec_runner(model_name, process_name, **kwargs):
     :param api_key (optional, use username/password instead):
     :return:
     """
-    api_key = kwargs.get('api_key', None)
-    username = kwargs.get('username', None)
-    password = kwargs.get('password', None)
-    interval_mins = kwargs.get('interval_mins', 0.1)
+    api_key = kwargs.get("api_key", None)
+    username = kwargs.get("username", None)
+    password = kwargs.get("password", None)
+    interval_mins = kwargs.get("interval_mins", 0.1)
     job_runner = Runner(api_key)
 
     if not api_key and not password:
@@ -260,23 +283,38 @@ def exec_runner(model_name, process_name, **kwargs):
 
     if not api_key:
         job_runner.get_token(username=username, password=password)
-    activity_id = job_runner.run_process_by_name(model_name=model_name,
-                                                 process_name=process_name)
-    job_runner.monitor_activity(model_name=model_name,
-                                activity_id=activity_id, interval_mins=interval_mins)
+    activity_id = job_runner.run_process_by_name(
+        model_name=model_name, process_name=process_name
+    )
+    job_runner.monitor_activity(
+        model_name=model_name,
+        activity_id=activity_id,
+        interval_mins=interval_mins,
+    )
 
 
 if __name__ == "__main__":
     PARSER.add_argument("-u", "--username", help="icm username")
     PARSER.add_argument("-p", "--password", help="icm username")
     PARSER.add_argument("-a", "--api_key", help="api key")
-    PARSER.add_argument("-m", "--model_name", help="model name, icm environment")
-    PARSER.add_argument("-j", "--job_name", help="the name of the job/process you want to run")
+    PARSER.add_argument(
+        "-m", "--model_name", help="model name, icm environment"
+    )
+    PARSER.add_argument(
+        "-j", "--job_name", help="the name of the job/process you want to run"
+    )
     ARGS = PARSER.parse_args()
 
     if not ARGS.api_key:
-        exec_runner(username=ARGS.username, password=ARGS.password,
-                    model_name=ARGS.model_name, process_name=ARGS.job_name)
+        exec_runner(
+            username=ARGS.username,
+            password=ARGS.password,
+            model_name=ARGS.model_name,
+            process_name=ARGS.job_name,
+        )
     else:
-        exec_runner(api_key=ARGS.api_key, model_name=ARGS.model_name,
-                    process_name=ARGS.job_name)
+        exec_runner(
+            api_key=ARGS.api_key,
+            model_name=ARGS.model_name,
+            process_name=ARGS.job_name,
+        )

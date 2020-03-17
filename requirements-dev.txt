@@ -1,1 +1,4 @@
 requests
+tox
+black
+pre-commit
