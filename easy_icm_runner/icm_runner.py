@@ -9,7 +9,7 @@ import requests
 
 log.basicConfig(format="%(asctime)s - %(message)s", level=log.INFO)
 
-SPM_URL = "https://spm.ibmcloud.com"
+SPM_URL = "https://spm.varicent.com"
 
 PARSER = argparse.ArgumentParser()
 
