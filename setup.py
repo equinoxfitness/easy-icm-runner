@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="easy-icm-runner",
-    version="2.1.2",
+    version="2.2.0",
     author="Bachir El Koussa",
     author_email="bgkoussa@gmail.com",
     description="A wrapper for IBM ICMs Scheduler API Calls'",
