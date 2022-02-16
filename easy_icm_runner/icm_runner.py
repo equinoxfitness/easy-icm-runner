@@ -10,9 +10,9 @@ import requests
 log.basicConfig(format="%(asctime)s - %(message)s", level=log.INFO)
 
 SPM_URL = "https://spm.varicent.com"
+SPM_URL2 = "https://api.cloud.varicent.com"
 
 PARSER = argparse.ArgumentParser()
-
 
 class ActivityNotFoundError(Exception):
     """
@@ -31,11 +31,14 @@ class Runner:
     Functions to manage running the Scheduler
     """
 
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, aws=False):
         """
         Initialises a class
         """
-        self.login_url = f"{SPM_URL}/services/login"
+        if aws:
+            self.login_url = f"{SPM_URL2}/services/login"
+        else:
+            self.login_url = f"{SPM_URL}/services/login"
         self.token = ""
         if api_key:
             self.token = api_key
@@ -75,14 +78,17 @@ class Runner:
         }
         return header
 
-    def get_process_id(self, model_name, process_name):
+    def get_process_id(self, model_name, process_name, aws):
         """
         Gets the top level process id using a given process name
         :param model_name:
         :param process_name:
         :return: process_id
         """
-        url = f"{SPM_URL}/api/v1/scheduleitem"
+        if aws:
+            url = f"{SPM_URL2}/api/v1/scheduleitem"
+        else:
+            url = f"{SPM_URL}/api/v1/scheduleitem"
         process_id = -1
         header = self.build_header(model_name=model_name)
         req = requests.get(url=url, headers=header)
@@ -104,14 +110,17 @@ class Runner:
 
         return process_id
 
-    def run_process_by_id(self, model_name, process_id):
+    def run_process_by_id(self, model_name, process_id, aws):
         """
         Runs a process by its id
         :param model_name:
         :param process_id:
         :return: activity_id
         """
-        url = f"{SPM_URL}/api/v1/rpc/scheduleitem/{process_id}/run"
+        if aws:
+            url = f"{SPM_URL2}/api/v1/rpc/scheduleitem/{process_id}/run"
+        else:
+            url = f"{SPM_URL}/api/v1/rpc/scheduleitem/{process_id}/run"
         header = self.build_header(model_name=model_name)
         req = requests.post(url=url, headers=header)
         req_obj = req.json()
@@ -128,24 +137,27 @@ class Runner:
         log.info("Activity id = %s", activity_id)
         return activity_id
 
-    def run_process_by_name(self, model_name, process_name):
+    def run_process_by_name(self, model_name, process_name, aws):
         """
         Runs a top level process by its name
         """
-        process_id = self.get_process_id(model_name, process_name)
+        process_id = self.get_process_id(model_name, process_name, aws)
         activity_id = self.run_process_by_id(
-            model_name=model_name, process_id=process_id
+            model_name=model_name, process_id=process_id, aws=aws
         )
         return activity_id
 
-    def get_live_activity_status(self, model_name, activity_id):
+    def get_live_activity_status(self, model_name, activity_id, aws):
         """
         Gets the status of a live activity by its id
         :param model_name:
         :param activity_id:
         :return: res
         """
-        url = f"{SPM_URL}/api/v1/liveactivities?liveActivityDTO={activity_id}"
+        if aws:
+            url = f"{SPM_URL2}/api/v1/liveactivities?liveActivityDTO={activity_id}"
+        else:
+            url = f"{SPM_URL}/api/v1/liveactivities?liveActivityDTO={activity_id}"
         headers = self.build_header(model_name=model_name)
         res = {}
         req = requests.get(url=url, headers=headers)
@@ -169,18 +181,21 @@ class Runner:
 
         if not res:
             res = self.get_completed_activity_status(
-                model_name=model_name, activity_id=activity_id
+                model_name=model_name, activity_id=activity_id, aws=aws
             )
 
         return res
 
-    def get_all_completed_activities(self, model_name):
+    def get_all_completed_activities(self, model_name, aws):
         """
         Gets a list of all the completed activities
         :param model_name:
         :return:
         """
-        url = f"{SPM_URL}/api/v1/completedactivities"
+        if aws:
+            url = f"{SPM_URL2}/api/v1/completedactivities"
+        else:
+            url = f"{SPM_URL}/api/v1/completedactivities"
         header = self.build_header(model_name=model_name)
         req = requests.get(url=url, headers=header)
         req_obj = req.json()
@@ -196,14 +211,14 @@ class Runner:
 
         return req_obj
 
-    def get_completed_activity_status(self, model_name, activity_id):
+    def get_completed_activity_status(self, model_name, activity_id, aws):
         """
         Gets the status of a completed activity by its id
         :param model_name:
         :param activity_id:
         :return:
         """
-        activity_list = self.get_all_completed_activities(model_name)
+        activity_list = self.get_all_completed_activities(model_name, aws)
         res = {}
         for dic in activity_list:
             if dic["progressId"] == int(activity_id):
@@ -218,17 +233,18 @@ class Runner:
             )
         return res
 
-    def monitor_activity(self, model_name, activity_id, interval_mins=0.1):
+    def monitor_activity(self, model_name, activity_id, aws, interval_mins=0.1):
         """
         Monitors an activity until its status <> "Running"
         :param model_name:
         :param activity_id:
+        :param aws:
         :param interval_mins:
         :return:
         """
         try:
             status = self.get_completed_activity_status(
-                model_name=model_name, activity_id=activity_id
+                model_name=model_name, activity_id=activity_id, aws=aws
             )
             run_status = 1
         except ActivityNotFoundError:
@@ -237,13 +253,13 @@ class Runner:
             time.sleep(60 * interval_mins)
             try:
                 status = self.get_completed_activity_status(
-                    model_name=model_name, activity_id=activity_id
+                    model_name=model_name, activity_id=activity_id, aws=aws
                 )
                 run_status = 1
             except ActivityNotFoundError:
                 run_status = 0
                 status = self.get_live_activity_status(
-                    model_name=model_name, activity_id=activity_id
+                    model_name=model_name, activity_id=activity_id, aws=aws
                 )
                 log.info(
                     "Current status: %s - %s",
@@ -276,20 +292,22 @@ def exec_runner(model_name, process_name, **kwargs):
     username = kwargs.get("username", None)
     password = kwargs.get("password", None)
     interval_mins = kwargs.get("interval_mins", 0.1)
+    aws = kwargs.get("aws", False)
     job_runner = Runner(api_key)
 
     if not api_key and not password:
         raise Exception("API Key or Password missing")
 
     if not api_key:
-        job_runner.get_token(username=username, password=password)
+        job_runner.get_token(username=username, password=password, aws=aws)
     activity_id = job_runner.run_process_by_name(
-        model_name=model_name, process_name=process_name
+        model_name=model_name, process_name=process_name, aws=aws
     )
     job_runner.monitor_activity(
         model_name=model_name,
         activity_id=activity_id,
         interval_mins=interval_mins,
+        aws=aws,
     )
 
 
@@ -303,6 +321,9 @@ if __name__ == "__main__":
     PARSER.add_argument(
         "-j", "--job_name", help="the name of the job/process you want to run"
     )
+    PARSER.add_argument(
+        "-aws", "--aws", help="is the model running on aws cloud"
+    )
     ARGS = PARSER.parse_args()
 
     if not ARGS.api_key:
@@ -311,10 +332,12 @@ if __name__ == "__main__":
             password=ARGS.password,
             model_name=ARGS.model_name,
             process_name=ARGS.job_name,
+            aws=ARGS.aws,
         )
     else:
         exec_runner(
             api_key=ARGS.api_key,
             model_name=ARGS.model_name,
             process_name=ARGS.job_name,
+            aws=ARGS.aws,
         )
